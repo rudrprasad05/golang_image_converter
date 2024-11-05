@@ -1,10 +1,13 @@
 package main
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"fmt"
 	"image/jpeg"
 	"log"
+	"mime"
+	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -116,7 +119,29 @@ func Protected(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Welcome to the protected route!")
 }
 
-func convertFile(){}
+func generateUniqueFileName(handler *multipart.FileHeader) string {
+	// Generate a random suffix
+	randomBytes := make([]byte, 8)
+	_, err := rand.Read(randomBytes)
+	if err != nil {
+		log.Printf("Error generating random bytes: %v", err)
+		return "upload-unknown"
+	}
+	randomSuffix := fmt.Sprintf("%x", randomBytes)
+
+	// Extract the file extension from the MIME type
+	mimeType := handler.Header.Get("Content-Type")
+	extensions, _ := mime.ExtensionsByType(mimeType)
+	extension := ".bin" // Default to .bin if no extension is found
+	if len(extensions) > 0 {
+		extension = extensions[0]
+	}
+
+	// Construct the unique file name
+	return fmt.Sprintf("upload-%s%s", randomSuffix, extension)
+}
+
+// func convertFile(){}
 
 func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse the multipart form data with a maximum file size limit (e.g., 10MB)
@@ -131,29 +156,22 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
     }
 	defer file.Close()
 
-	img, decodeErr := jpeg.Decode(file)
+	_, decodeErr := jpeg.Decode(file)
+	uniqueName := generateUniqueFileName(handler)
+	
 	if decodeErr != nil {
 		http.Error(w, "Error decoding JPG image", http.StatusBadRequest)
 		return
 	}
 
-	src, _ := UploadFileToS3(file, handler.Filename, "mctechfiji")
+	src, uploadErr := UploadFileToS3(file, uniqueName, "mctechfiji")
+
+	if uploadErr != nil{
+		http.Error(w, "Error uploading image", http.StatusBadRequest)
+		return
+	}
 
 	log.Println(src)
-	log.Println(img)
-
-
-	// tempFile, err := os.CreateTemp("uploads", "upload-*.png")
-	// if err != nil {
-	// 	http.Error(w, "Could not create temporary file", http.StatusInternalServerError)
-	// 	return
-	// }
-	// defer tempFile.Close()
-
-	// if err := png.Encode(tempFile, img); err != nil {
-	// 	http.Error(w, "Error encoding image to PNG", http.StatusInternalServerError)
-	// 	return
-	// }
 }
 
 func DownloadImageHandler(w http.ResponseWriter, r *http.Request) {

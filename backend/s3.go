@@ -1,51 +1,53 @@
 package main
 
 import (
+	"context"
 	"fmt"
+	"log"
 	"mime/multipart"
 	"os"
 
+	"github.com/aws/aws-sdk-go-v2/config"
+	"github.com/aws/aws-sdk-go-v2/feature/s3/manager"
+	"github.com/aws/aws-sdk-go-v2/service/s3"
 	"github.com/aws/aws-sdk-go/aws"
-	"github.com/aws/aws-sdk-go/aws/session"
-	"github.com/aws/aws-sdk-go/service/s3/s3manager"
+	"github.com/joho/godotenv"
 )
+
+func init() {
+	// Load the .env file
+	err := godotenv.Load()
+	if err != nil {
+		log.Fatalf("Error loading .env file: %v", err)
+	}
+}
 
 func UploadFileToS3(file multipart.File, fileName string, bucketName string) (string, error) {
 	// Load the AWS configuration
-	bucket := os.Getenv("AWS_S3_BUCKET_NAME")
-	region := os.Getenv("AWS_S3_REGION")
-	
-	sess, err := session.NewSession(&aws.Config{
-		Region: aws.String(region)},
-	)
-	uploader := s3manager.NewUploader(sess)
 
-	_, err = uploader.Upload(&s3manager.UploadInput{
-		Bucket: aws.String(bucket),
-
-		// Can also use the `filepath` standard library package to modify the
-		// filename as need for an S3 object key. Such as turning absolute path
-		// to a relative path.
-		Key: aws.String(fileName),
-
-		// The file to be uploaded. io.ReadSeeker is preferred as the Uploader
-		// will be able to optimize memory when uploading large content. io.Reader
-		// is supported, but will require buffering of the reader's bytes for
-		// each part.
-		Body: file,
-	})
+	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(os.Getenv("AWS_REGION")))
 	if err != nil {
-		// Print the error and exit.
-		exitErrorf("Unable to upload %q to %q, %v", fileName, bucket, err)
+		log.Printf("error: %v", err)
+		return "unable to read config", err
 	}
 
-	fmt.Printf("Successfully uploaded %q to %q\n", fileName, bucket)
+	client := s3.NewFromConfig(cfg)
+	uploader := manager.NewUploader(client)
+	url := "image_converter/" + fileName
 
-	return fileName, err
-}
 
+	_, uploadErr := uploader.Upload(context.TODO(), &s3.PutObjectInput{
+		Bucket: aws.String("mctechfiji"),
+		Key:    aws.String(url),
+		Body:   file,
+	})
 
-func exitErrorf(msg string, args ...interface{}) {
-	fmt.Fprintf(os.Stderr, msg+"\n", args...)
-	os.Exit(1)
+	if uploadErr != nil{
+		log.Printf("error2: %v", uploadErr)
+		return "couldnt upload", uploadErr
+	}
+
+	fmt.Printf("Successfully uploaded %q to %q\n", fileName, url)
+
+	return url, nil
 }
