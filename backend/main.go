@@ -1,144 +1,18 @@
 package main
 
 import (
-	"crypto/rand"
-	"encoding/json"
+	"backend/lib"
 	"fmt"
-	"image/jpeg"
+	"io"
 	"log"
-	"mime"
-	"mime/multipart"
 	"net/http"
 	"os"
 	"path/filepath"
-	"time"
-
-	"github.com/golang-jwt/jwt/v4"
 )
-
-// Secret key used for signing JWTs
-var jwtKey = []byte("your_secret_key")
-
-// User struct for storing login details
-type User struct {
-	Username string `json:"username"`
-	Password string `json:"password"`
-}
-
-// Claims struct for JWT payload
-type Claims struct {
-	Username string `json:"username"`
-	jwt.RegisteredClaims
-}
-
-// In-memory user data (replace with a database in production)
-var users = map[string]string{
-	"admin": "password", // username: password
-}
-
-// GenerateToken generates a JWT token for a given username
-func GenerateToken(username string) (string, error) {
-	expirationTime := time.Now().Add(15 * time.Minute)
-	claims := &Claims{
-		Username: username,
-		RegisteredClaims: jwt.RegisteredClaims{
-			ExpiresAt: jwt.NewNumericDate(expirationTime),
-		},
-	}
-	token := jwt.NewWithClaims(jwt.SigningMethodHS256, claims)
-	return token.SignedString(jwtKey)
-}
-
-// Login handler for authenticating users
-func Login(w http.ResponseWriter, r *http.Request) {
-	var user User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	expectedPassword, ok := users[user.Username]
-	if !ok || expectedPassword != user.Password {
-		http.Error(w, "Invalid username or password", http.StatusUnauthorized)
-		return
-	}
-
-	tokenString, err := GenerateToken(user.Username)
-	if err != nil {
-		http.Error(w, "Could not generate token", http.StatusInternalServerError)
-		return
-	}
-
-	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(map[string]string{"token": tokenString})
-}
-
-// Register handler for creating new users
-func Register(w http.ResponseWriter, r *http.Request) {
-	var user User
-	if err := json.NewDecoder(r.Body).Decode(&user); err != nil {
-		http.Error(w, "Invalid request body", http.StatusBadRequest)
-		return
-	}
-
-	if _, exists := users[user.Username]; exists {
-		http.Error(w, "User already exists", http.StatusConflict)
-		return
-	}
-
-	// Store the user in the in-memory map (passwords should be hashed in a real application)
-	users[user.Username] = user.Password
-	w.WriteHeader(http.StatusCreated)
-	fmt.Fprintln(w, "User registered successfully")
-}
-
-// Middleware to validate JWT tokens
-func Authenticate(next http.HandlerFunc) http.HandlerFunc {
-	return func(w http.ResponseWriter, r *http.Request) {
-		tokenString := r.Header.Get("Authorization")
-		if tokenString == "" {
-			http.Error(w, "Missing token", http.StatusUnauthorized)
-			return
-		}
-
-		claims := &Claims{}
-		token, err := jwt.ParseWithClaims(tokenString, claims, func(token *jwt.Token) (interface{}, error) {
-			return jwtKey, nil
-		})
-		if err != nil || !token.Valid {
-			http.Error(w, "Invalid or expired token", http.StatusUnauthorized)
-			return
-		}
-
-		next(w, r)
-	}
-}
 
 // Protected handler for testing authenticated access
 func Protected(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Welcome to the protected route!")
-}
-
-func generateUniqueFileName(handler *multipart.FileHeader) string {
-	// Generate a random suffix
-	randomBytes := make([]byte, 8)
-	_, err := rand.Read(randomBytes)
-	if err != nil {
-		log.Printf("Error generating random bytes: %v", err)
-		return "upload-unknown"
-	}
-	randomSuffix := fmt.Sprintf("%x", randomBytes)
-
-	// Extract the file extension from the MIME type
-	mimeType := handler.Header.Get("Content-Type")
-	extensions, _ := mime.ExtensionsByType(mimeType)
-	extension := ".bin" // Default to .bin if no extension is found
-	if len(extensions) > 0 {
-		extension = extensions[0]
-	}
-
-	// Construct the unique file name
-	return fmt.Sprintf("upload-%s%s", randomSuffix, extension)
 }
 
 // func convertFile(){}
@@ -156,15 +30,13 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
     }
 	defer file.Close()
 
-	_, decodeErr := jpeg.Decode(file)
-	uniqueName := generateUniqueFileName(handler)
-	
-	if decodeErr != nil {
-		http.Error(w, "Error decoding JPG image", http.StatusBadRequest)
+	_, seekErr := file.Seek(0, io.SeekStart)
+	if seekErr != nil {
+		http.Error(w, "Error resetting file pointer", http.StatusInternalServerError)
 		return
 	}
 
-	src, uploadErr := UploadFileToS3(file, uniqueName, "mctechfiji")
+	src, uploadErr := UploadFileToS3(file, handler.Filename, "mctechfiji")
 
 	if uploadErr != nil{
 		http.Error(w, "Error uploading image", http.StatusBadRequest)
@@ -198,29 +70,15 @@ func DownloadImageHandler(w http.ResponseWriter, r *http.Request) {
 	http.ServeFile(w, r, filePath)
 }
 
-func enableCORS(next http.Handler) http.Handler {
-	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		w.Header().Set("Access-Control-Allow-Origin", "http://localhost:3000")
-		w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE")
-		w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization")
-		if r.Method == "OPTIONS" {
-			w.WriteHeader(http.StatusOK)
-			return
-		}
-		next.ServeHTTP(w, r)
-	})
-}
+
 
 
 func main() {
 	mux := http.NewServeMux()
-	mux.HandleFunc("/register", Register)
-	mux.HandleFunc("/login", Login)
-	mux.HandleFunc("/protected", Authenticate(Protected))
 	mux.HandleFunc("/upload", UploadFileHandler)
 	mux.HandleFunc("/download", DownloadImageHandler)
 
-	handler := enableCORS(mux)
+	handler := lib.EnableCORS(mux)
 
 	log.Println("Server running on port 8080...")
 	log.Fatal(http.ListenAndServe(":8080", handler))
