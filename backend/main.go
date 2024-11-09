@@ -2,12 +2,14 @@ package main
 
 import (
 	"backend/lib"
+	"bytes"
+	"encoding/json"
 	"fmt"
+	"image"
 	"io"
 	"log"
 	"net/http"
-	"os"
-	"path/filepath"
+	"strings"
 )
 
 // Protected handler for testing authenticated access
@@ -15,7 +17,56 @@ func Protected(w http.ResponseWriter, r *http.Request) {
 	fmt.Fprintln(w, "Welcome to the protected route!")
 }
 
-// func convertFile(){}
+func ConvertFile(w http.ResponseWriter, r *http.Request) {
+	r.ParseMultipartForm(10 << 20) // 10MB limit
+
+	file, handler, err := r.FormFile("file")
+	if err != nil {
+		http.Error(w, "Error parsing form data", http.StatusBadRequest)
+		return
+	}
+	defer file.Close() 
+
+	log.Println("File:", file, "Handler:", handler.Filename)
+
+	fileType := r.FormValue("type")
+	log.Println("Type:", fileType)
+
+	srcImage, _, err := image.Decode(file)
+	if err != nil {
+		http.Error(w, "Unsupported image format", http.StatusBadRequest)
+		return
+	}
+
+	// Buffer to store the encoded image
+	var buf bytes.Buffer
+
+	err = lib.EncodeImage(&buf, srcImage, fileType)
+	if err != nil {
+		http.Error(w, "Error encoding image", http.StatusInternalServerError)
+		return
+	}
+
+	handler, metaDataErr := lib.GetFileMetadata(fileType, &buf)
+	if metaDataErr != nil {
+		http.Error(w, "Error setting image headers", http.StatusInternalServerError)
+		return
+	}
+
+	convertedSrc, uploadErr := UploadFileToS3(&buf, handler)
+
+	if uploadErr != nil {
+		http.Error(w, "Error uploading image", http.StatusBadRequest)
+		return
+	}
+
+	log.Println(handler.Header)
+
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode(convertedSrc)
+
+}
 
 func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 	// Parse the multipart form data with a maximum file size limit (e.g., 10MB)
@@ -36,29 +87,34 @@ func UploadFileHandler(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	src, uploadErr := UploadFileToS3(file, handler.Filename, "mctechfiji")
+	src, uploadErr := UploadFileToS3(file, handler)
 
-	if uploadErr != nil{
+	if uploadErr != nil {
 		http.Error(w, "Error uploading image", http.StatusBadRequest)
 		return
 	}
 
-	log.Println(src)
+	// Send the URL back to the user as a response
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	fmt.Fprintf(w, `{"url": "%s"}`, src) // Return the URL in JSON format
+
+	log.Println("File uploaded successfully:", src)
 }
 
 func DownloadImageHandler(w http.ResponseWriter, r *http.Request) {
 	fileName := r.URL.Query().Get("file")
+	fileNameParts := strings.Split(fileName, "image_converter")
+	fileName = "image_converter" + fileNameParts[len(fileNameParts) - 1]
+	log.Println(fileName)
 	if fileName == "" {
 		http.Error(w, "File name is required", http.StatusBadRequest)
 		return
 	}
 
-	// Construct the file path
-	filePath := filepath.Join("uploads", fileName)
-
-	// Check if the file exists
-	if _, err := os.Stat(filePath); os.IsNotExist(err) {
-		http.Error(w, "File not found", http.StatusNotFound)
+	file, err := DownloadImageFromS3(fileName)
+	if err != nil{
+		http.Error(w, "Error getting file", http.StatusBadRequest)
 		return
 	}
 
@@ -66,16 +122,18 @@ func DownloadImageHandler(w http.ResponseWriter, r *http.Request) {
 	w.Header().Set("Content-Type", "image/png")
 	w.Header().Set("Content-Disposition", fmt.Sprintf("attachment; filename=\"%s\"", fileName))
 
-	// Serve the file
-	http.ServeFile(w, r, filePath)
+	w.WriteHeader(http.StatusOK)
+	_, writeErr := w.Write(file)
+	if writeErr != nil {
+		http.Error(w, "Error writing file to response", http.StatusInternalServerError)
+		return
+	}
 }
-
-
-
 
 func main() {
 	mux := http.NewServeMux()
 	mux.HandleFunc("/upload", UploadFileHandler)
+	mux.HandleFunc("/convert", ConvertFile)
 	mux.HandleFunc("/download", DownloadImageHandler)
 
 	handler := lib.EnableCORS(mux)
