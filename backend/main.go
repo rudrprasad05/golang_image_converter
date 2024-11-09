@@ -9,6 +9,7 @@ import (
 
 func main() {
 	mux := http.NewServeMux()
+	mux.HandleFunc("/api/test", routes.ConvertFile)
 	mux.HandleFunc("/convert", routes.ConvertFile)
 	mux.HandleFunc("/download", routes.DownloadImageHandler)
 

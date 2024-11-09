@@ -8,11 +8,17 @@ import (
 	"net/http"
 )
 
+func TestApi(w http.ResponseWriter, r *http.Request){
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusOK)
+	json.NewEncoder(w).Encode("API Working")
+}
+
 
 func ConvertFile(w http.ResponseWriter, r *http.Request) {
 	r.ParseMultipartForm(10 << 20) // 10MB limit
 
-	file, handler, err := r.FormFile("file")
+	file, _, err := r.FormFile("file")
 	if err != nil {
 		http.Error(w, "Error parsing form data", http.StatusBadRequest)
 		return

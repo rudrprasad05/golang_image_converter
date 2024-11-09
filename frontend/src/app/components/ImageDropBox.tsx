@@ -9,34 +9,21 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import axios from "axios";
+import clsx from "clsx";
 import { saveAs } from "file-saver";
-import {
-  Download,
-  ImageIcon,
-  Loader2,
-  RefreshCcw,
-  Trash,
-  X,
-} from "lucide-react";
+import { Download, ImageIcon, RefreshCcw, X } from "lucide-react";
 import Image from "next/image";
 import { useRouter } from "next/navigation";
 import { useState } from "react";
-import ImageDropzone from "./ImageDropzone";
 import { toast } from "sonner";
-import clsx from "clsx";
+import ImageDropzone from "./ImageDropzone";
 
 const ImageDropBox = () => {
   const [file, setFile] = useState<File>();
   const [type, setType] = useState<string>("png");
 
-  const router = useRouter();
-
   const [loadingImage, setloadingImage] = useState<boolean>(false);
-  const [imageUpload, setImageUpload] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string>(
-    "https://mctechfiji.s3.us-east-1.amazonaws.com/image_converter/converted_011226d3efd3fc5f652e2dd302ca2a5d.png"
-  );
-  const [isImageInCloud, setIsImageInCloud] = useState(false);
+  const [imageUrl, setImageUrl] = useState<string>();
 
   function onSubmit() {
     setloadingImage(true);
@@ -55,7 +42,7 @@ const ImageDropBox = () => {
     }
 
     axios
-      .post(`http://localhost:8080/convert`, formData)
+      .post(`http://44.204.76.51:8080/convert`, formData)
       .then((res) => {
         if (res.status == 200) {
           console.log(res.data);
@@ -73,7 +60,7 @@ const ImageDropBox = () => {
       return;
     }
 
-    fetch(`http://localhost:8080/download?file=${imageUrl}`) // Replace with your actual image URL
+    fetch(`http://44.204.76.51:8080/download?file=${imageUrl}`) // Replace with your actual image URL
       .then((response) => response.blob())
       .then((blob) => {
         saveAs(blob, "converted_image." + type); // Set desired filename
@@ -91,7 +78,7 @@ const ImageDropBox = () => {
           }}
           className="space-y-5 pt-8"
         >
-          <ImageDropzone image={file} setImage={setFile} />
+          <ImageDropzone setImage={setFile} />
 
           <section className="w-4/5 mx-auto flex items-center gap-4">
             <section className="grow">

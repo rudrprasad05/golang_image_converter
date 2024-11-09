@@ -1,13 +1,7 @@
-import React, { useCallback, useState } from "react";
+import { useCallback } from "react";
 import { DropzoneOptions, useDropzone } from "react-dropzone";
 
-function ImageDropzone({
-  image,
-  setImage,
-}: {
-  image?: File;
-  setImage: (f: any) => void;
-}) {
+function ImageDropzone({ setImage }: { setImage: (f: File) => void }) {
   // Callback to handle the image drop
   const onDrop = useCallback<NonNullable<DropzoneOptions["onDrop"]>>(
     (acceptedFiles) => {
