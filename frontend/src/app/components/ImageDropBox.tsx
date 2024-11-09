@@ -1,23 +1,5 @@
 "use client";
 
-import React, { useState } from "react";
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from "@/components/ui/form";
-import { Input } from "@/components/ui/input";
-import { FieldValue, useForm } from "react-hook-form";
-import { UploadImageForm, UploadImageType } from "@/app/types";
-import { zodResolver } from "@hookform/resolvers/zod";
-import { useRouter } from "next/navigation";
-import axios from "axios";
-import { toast } from "sonner";
-import { ImageIcon, Loader2, Trash, Upload, X } from "lucide-react";
-import Image from "next/image";
 import { Button } from "@/components/ui/button";
 import {
   Select,
@@ -26,50 +8,35 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
-import Link from "next/link";
+import axios from "axios";
 import { saveAs } from "file-saver";
+import {
+  Download,
+  ImageIcon,
+  Loader2,
+  RefreshCcw,
+  Trash,
+  X,
+} from "lucide-react";
+import Image from "next/image";
+import { useRouter } from "next/navigation";
+import { useState } from "react";
+import ImageDropzone from "./ImageDropzone";
+import { toast } from "sonner";
+import clsx from "clsx";
 
 const ImageDropBox = () => {
   const [file, setFile] = useState<File>();
   const [type, setType] = useState<string>("png");
 
   const router = useRouter();
-  const { register, handleSubmit } = useForm();
 
   const [loadingImage, setloadingImage] = useState<boolean>(false);
   const [imageUpload, setImageUpload] = useState(false);
-  const [imageUrl, setImageUrl] = useState<string>();
+  const [imageUrl, setImageUrl] = useState<string>(
+    "https://mctechfiji.s3.us-east-1.amazonaws.com/image_converter/converted_011226d3efd3fc5f652e2dd302ca2a5d.png"
+  );
   const [isImageInCloud, setIsImageInCloud] = useState(false);
-
-  const handleImageUpload = async (file: File) => {
-    setImageUpload(true);
-    setloadingImage(true);
-
-    try {
-      const formData = new FormData();
-      formData.append("file", file);
-
-      axios
-        .post(`http://localhost:8080/upload`, formData, {
-          headers: {
-            "Content-Type": "multipart/form-data",
-          },
-        })
-        .then((res) => {
-          setImageUrl(res.data.url);
-          setImageUpload(true);
-          setloadingImage(false);
-          router.refresh();
-        })
-        .catch((error) => {
-          // toast("Something went wrong", { description: "Contact site admin" });
-          console.log("ImageDropBox", error);
-        });
-    } catch (e: any) {
-      // Handle errors here
-      console.error(e);
-    }
-  };
 
   function onSubmit() {
     setloadingImage(true);
@@ -79,6 +46,7 @@ const ImageDropBox = () => {
       formData.append("file", file);
       formData.append("type", type);
     } else {
+      toast.error("Image Uploaded to Cloud");
       console.error("File is undefined");
       console.log(file);
       console.log(type);
@@ -97,6 +65,7 @@ const ImageDropBox = () => {
       })
       .catch((error) => {
         console.log("ImageDropBox", error);
+        setloadingImage(false);
       });
   }
   const download = () => {
@@ -107,7 +76,7 @@ const ImageDropBox = () => {
     fetch(`http://localhost:8080/download?file=${imageUrl}`) // Replace with your actual image URL
       .then((response) => response.blob())
       .then((blob) => {
-        saveAs(blob, "image.jpg"); // Set desired filename
+        saveAs(blob, "converted_image." + type); // Set desired filename
       })
       .catch((error) => console.error("Error downloading the image:", error));
   };
@@ -122,63 +91,89 @@ const ImageDropBox = () => {
           }}
           className="space-y-5 pt-8"
         >
-          <input
-            type="file"
-            // onChange={(e) => handleImageUpload(e.target.files?.[0] as File)}
-            onChange={(e) => setFile(e.target.files?.[0] as File)}
-          />
+          <ImageDropzone image={file} setImage={setFile} />
+
+          <section className="w-4/5 mx-auto flex items-center gap-4">
+            <section className="grow">
+              <Select onValueChange={(e) => setType(e)} defaultValue={type}>
+                <SelectTrigger className="bg-indigo-700 border-none">
+                  <SelectValue placeholder="Select a verified email to display" />
+                </SelectTrigger>
+                <SelectContent className="bg-indigo-700 border-none">
+                  <SelectItem className="border-none" value="png">
+                    PNG
+                  </SelectItem>
+                  <SelectItem className="border-none" value="jpeg">
+                    JPEG
+                  </SelectItem>
+                  <SelectItem className="border-none" value="jpg">
+                    JPG
+                  </SelectItem>
+                  <SelectItem className="border-none" value="webp">
+                    WEBP
+                  </SelectItem>
+                </SelectContent>
+              </Select>
+            </section>
+
+            <div className="flex items-center gap-3">
+              <Button
+                type="submit"
+                className="flex items-center gap-2 bg-indigo-200"
+              >
+                <RefreshCcw
+                  className={clsx(loadingImage ? "animate-spin" : "")}
+                />
+                Convert
+              </Button>
+            </div>
+          </section>
+
           <section className="w-4/5 mx-auto ">
             {file && (
-              <div className="border px-5 py-3 rounded-sm flex gap-8 items-center">
+              <div className="bg-indigo-700 px-5 py-3 rounded-sm flex gap-8 items-center">
                 <div>
-                  <ImageIcon />
+                  <ImageIcon className="text-indigo-300" />
                 </div>
-                <div>{file.name}</div>
+                <div className="truncate">{file.name}</div>
+                <div className="text-indigo-300">
+                  {file.type.split("/").pop()}
+                </div>
                 <div className="ml-auto">
-                  <Trash />
+                  <div
+                    onClick={() => setFile(undefined)}
+                    className="bg-destructive cursor-pointer p-[2px] rounded-full w-5 h-5 flex items-center justify-center"
+                  >
+                    <X className="text-indigo-200" />
+                  </div>
                 </div>
               </div>
             )}
           </section>
-
-          <Select onValueChange={(e) => setType(e)} defaultValue={type}>
-            <SelectTrigger>
-              <SelectValue placeholder="Select a verified email to display" />
-            </SelectTrigger>
-            <SelectContent>
-              <SelectItem value="png">PNG</SelectItem>
-              <SelectItem value="jpeg">JPEG</SelectItem>
-              <SelectItem value="jpg">JPG</SelectItem>
-              <SelectItem value="webp">WEBP</SelectItem>
-            </SelectContent>
-          </Select>
-
-          <div className="flex items-center gap-3">
-            <Button type="submit">Submit</Button>
-            {loadingImage && (
-              <div>
-                <Loader2 className="animate-spin" />
-              </div>
-            )}
-          </div>
         </form>
       </main>
-      {imageUrl && (
-        <section>
-          <div className="w-[100px] h-[100px]">
-            <Image
-              src={imageUrl}
-              alt="image"
-              height={50}
-              width={50}
-              className="w-auto h-auto object-cover aspect-square rounded-sm"
-            />
-          </div>
-          <div>
-            <Button onClick={download}>Download!</Button>
-          </div>
-        </section>
-      )}
+      <section className="w-4/5 mx-auto mt-6">
+        {imageUrl && (
+          <section className="bg-indigo-700 rounded-sm flex justify-between items-center">
+            <div className="w-[100px] h-[100px]">
+              <Image
+                src={imageUrl}
+                alt="image"
+                height={100}
+                width={100}
+                className="w-auto h-auto object-cover aspect-square rounded-l-sm"
+              />
+            </div>
+
+            <div className="pr-6">
+              <Button size={"sm"} onClick={download}>
+                <Download size={10} />
+                Download
+              </Button>
+            </div>
+          </section>
+        )}
+      </section>
     </div>
   );
 };

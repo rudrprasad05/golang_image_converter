@@ -1,7 +1,6 @@
-package main
+package lib
 
 import (
-	"backend/lib"
 	"bytes"
 	"context"
 	"fmt"
@@ -123,7 +122,7 @@ func DownloadImageFromS3(key string) ([]byte, error) {
 }
 
 func UploadFileToS3(file io.Reader, handler *multipart.FileHeader) (string, error) {
-	fileName := "converted_" + lib.GenerateRandomName() + filepath.Ext(handler.Filename)
+	fileName := "converted_" + GenerateRandomName() + filepath.Ext(handler.Filename)
 	url := "image_converter/" + fileName
 
 	cfg, err := config.LoadDefaultConfig(context.TODO(), config.WithRegion(os.Getenv("AWS_REGION")))

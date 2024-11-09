@@ -1,6 +1,9 @@
 import type { Metadata } from "next";
 import localFont from "next/font/local";
 import "./globals.css";
+import { Toaster as SonnarToaster } from "@/components/ui/sonner";
+import { ThemeProvider } from "./theme/ThemeProvider";
+import { TooltipProvider } from "@/components/ui/tooltip";
 
 export const metadata: Metadata = {
   title: "Create Next App",
@@ -13,8 +16,15 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en">
-      <body className={`antialiased`}>{children}</body>
+    <html lang="en" className="bg-indigo-950">
+      <body className={`antialiased`}>
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <SonnarToaster />
+          <TooltipProvider>
+            <main className="min-h-screen">{children}</main>
+          </TooltipProvider>
+        </ThemeProvider>
+      </body>
     </html>
   );
 }
