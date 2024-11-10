@@ -42,7 +42,7 @@ const ImageDropBox = () => {
     }
 
     axios
-      .post(`https://44.204.76.51:8080/convert`, formData)
+      .post(`https://imageconverter.api.rudrpasad.com/convert`, formData)
       .then((res) => {
         if (res.status == 200) {
           console.log(res.data);
@@ -60,7 +60,7 @@ const ImageDropBox = () => {
       return;
     }
 
-    fetch(`https://44.204.76.51:8080/download?file=${imageUrl}`) // Replace with your actual image URL
+    fetch(`https://imageconverter.api.rudrpasad.com/download?file=${imageUrl}`) // Replace with your actual image URL
       .then((response) => response.blob())
       .then((blob) => {
         saveAs(blob, "converted_image." + type); // Set desired filename
