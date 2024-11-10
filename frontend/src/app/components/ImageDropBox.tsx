@@ -18,6 +18,8 @@ import { useState } from "react";
 import { toast } from "sonner";
 import ImageDropzone from "./ImageDropzone";
 
+const API_ENDPOINT = "https://imageconverter.api.rudrprasad.com";
+
 const ImageDropBox = () => {
   const [file, setFile] = useState<File>();
   const [type, setType] = useState<string>("png");
@@ -42,7 +44,7 @@ const ImageDropBox = () => {
     }
 
     axios
-      .post(`https://imageconverter.api.rudrpasad.com/convert`, formData)
+      .post(`${API_ENDPOINT}/convert`, formData)
       .then((res) => {
         if (res.status == 200) {
           console.log(res.data);
@@ -60,7 +62,7 @@ const ImageDropBox = () => {
       return;
     }
 
-    fetch(`https://imageconverter.api.rudrpasad.com/download?file=${imageUrl}`) // Replace with your actual image URL
+    fetch(`${API_ENDPOINT}/download?file=${imageUrl}`) // Replace with your actual image URL
       .then((response) => response.blob())
       .then((blob) => {
         saveAs(blob, "converted_image." + type); // Set desired filename
