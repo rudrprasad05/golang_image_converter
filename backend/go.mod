@@ -31,5 +31,6 @@ require (
 	github.com/chai2010/webp v1.1.1
 	github.com/gorilla/mux v1.8.1 // indirect
 	github.com/jmespath/go-jmespath v0.4.0 // indirect
+	github.com/rudrprasad05/go-logs v1.0.0
 	golang.org/x/image v0.22.0 // indirect
 )

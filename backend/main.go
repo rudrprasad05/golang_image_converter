@@ -5,16 +5,28 @@ import (
 	"backend/routes"
 	"log"
 	"net/http"
+
+	"github.com/gorilla/mux"
+	"github.com/rudrprasad05/go-logs/logs"
 )
 
 func main() {
-	mux := http.NewServeMux()
-	mux.HandleFunc("/api/test", routes.ConvertFile)
-	mux.HandleFunc("/convert", routes.ConvertFile)
-	mux.HandleFunc("/download", routes.DownloadImageHandler)
+	router := mux.NewRouter()
+	logger, err := logs.NewLogger()
 
-	handler := lib.EnableCORS(mux)
+	if err != nil{
+		log.Println("err", err)
+		return
+	}
+
+	router.HandleFunc("/api/test", routes.TestApi).Methods("GET")
+	router.HandleFunc("/convert", routes.ConvertFile)
+	router.HandleFunc("/download", routes.DownloadImageHandler)
+
+	handler := lib.EnableCORS(router)
+	loggedHandler := logs.LoggingMiddleware(logger, handler)
+
 
 	log.Println("Server running on port 8080...")
-	log.Fatal(http.ListenAndServe(":8080", handler))
+	log.Fatal(http.ListenAndServe(":8080", loggedHandler))
 }

@@ -51,6 +51,10 @@ github.com/jmespath/go-jmespath/internal/testify v1.5.1/go.mod h1:L3OGu8Wl2/fWfC
 github.com/joho/godotenv v1.5.1 h1:7eLL/+HRGLY0ldzfGMeQkb7vMd0as4CfYvUVzLqw0N0=
 github.com/joho/godotenv v1.5.1/go.mod h1:f4LDr5Voq0i2e/R5DDNOoa2zzDfwtkZa6DnEwAbqwq4=
 github.com/pmezard/go-difflib v1.0.0/go.mod h1:iKH77koFhYxTK1pcRnkKkqfTogsbg7gZNVY4sRDYZ/4=
+github.com/rudrprasad05/go-logs v0.0.0-20241125111138-a39051c3904d h1:2zdD3E4LaV2oZS5oLJhCAaYqtO695z556nj0LXS+Jlw=
+github.com/rudrprasad05/go-logs v0.0.0-20241125111138-a39051c3904d/go.mod h1:FgdezCeIh6n/LhphMX+BEnWeSTEbmjDSTqu05nMR4yk=
+github.com/rudrprasad05/go-logs v1.0.0 h1:nKGucuaME+HKj7uYSofAE2NQj45R1O81uMnkQLhucOQ=
+github.com/rudrprasad05/go-logs v1.0.0/go.mod h1:FgdezCeIh6n/LhphMX+BEnWeSTEbmjDSTqu05nMR4yk=
 github.com/stretchr/objx v0.1.0/go.mod h1:HFkY916IF+rwdDfMAkV7OtwuqBVzrE8GR6GFx+wExME=
 golang.org/x/image v0.22.0 h1:UtK5yLUzilVrkjMAZAZ34DXGpASN8i8pj8g+O+yd10g=
 golang.org/x/image v0.22.0/go.mod h1:9hPFhljd4zZ1GNSIZJ49sqbp45GKK9t6w+iXvGqZUz4=

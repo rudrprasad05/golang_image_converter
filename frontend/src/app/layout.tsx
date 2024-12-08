@@ -17,6 +17,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="en" className="bg-indigo-950">
+      <head>
+        <title>Image Converter</title>
+        <link rel="stylesheet" href="favicon.ico" />
+      </head>
       <body className={`antialiased`}>
         <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
           <SonnarToaster />
